@@ -49,7 +49,7 @@ const AuthForm = ({ type }: { type: FormType }) => {
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           email,
-          password
+          password,
         );
 
         const result = await signUp({
@@ -72,7 +72,7 @@ const AuthForm = ({ type }: { type: FormType }) => {
         const userCredential = await signInWithEmailAndPassword(
           auth,
           email,
-          password
+          password,
         );
 
         const idToken = await userCredential.user.getIdToken();

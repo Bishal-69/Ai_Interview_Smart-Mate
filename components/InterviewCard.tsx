@@ -5,7 +5,12 @@ import Image from "next/image";
 import { getRandomInterviewCover } from "@/lib/utils";
 import { Button } from "./ui/button";
 import Link from "next/link";
-import { getFeedbackByInterviewId } from "@/lib/actions/general.action";
+import {
+  getFeedbackByInterviewId,
+  deleteInterview,
+} from "@/lib/actions/general.action";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface InterviewCardProps {
   id?: string;
@@ -14,6 +19,8 @@ interface InterviewCardProps {
   type: string;
   techstack: string[];
   createdAt?: string;
+  currentUserId?: string; // NEW
+  isOwner?: boolean; // NEW
 }
 
 interface Feedback {
@@ -38,17 +45,24 @@ const InterviewCard = ({
   type,
   techstack,
   createdAt,
+  currentUserId, // NEW
+  isOwner = false, // NEW
 }: InterviewCardProps) => {
+  const router = useRouter();
   const [feedback, setFeedback] = React.useState<Feedback | null>(null);
   const [cover, setCover] = React.useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = React.useState(false); // NEW
 
   // Fetch feedback on client to avoid SSR mismatch
   React.useEffect(() => {
     const fetchFeedback = async () => {
-      if (userId && id) {
+      // MODIFIED: Check current user's feedback OR owner's feedback
+      const userIdToFetch = currentUserId || userId;
+
+      if (userIdToFetch && id) {
         const data = await getFeedbackByInterviewId({
           interviewId: id,
-          userId,
+          userId: userIdToFetch,
         });
         setFeedback(data);
       }
@@ -57,7 +71,35 @@ const InterviewCard = ({
 
     // Set random cover only once on client
     setCover(getRandomInterviewCover());
-  }, [id, userId]);
+  }, [id, userId, currentUserId]);
+
+  // NEW: Delete handler
+  const handleDelete = async () => {
+    if (!id || !isOwner) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this interview? This action cannot be undone.",
+    );
+
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      const result = await deleteInterview(id);
+
+      if (result.success) {
+        toast.success("Interview deleted successfully");
+        router.refresh();
+      } else {
+        toast.error(result.message || "Failed to delete interview");
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error("An error occurred while deleting");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const normalizedType = /mix/gi.test(type) ? "Mixed" : "Technical";
 
@@ -80,6 +122,52 @@ const InterviewCard = ({
       <div className="card-interview relative">
         {/* Animated gradient overlay on hover */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary-200/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
+
+        {/* NEW: Delete Button - Only show for owner */}
+        {isOwner && (
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="absolute top-4 left-4 z-10 p-2 rounded-lg bg-destructive-100/10 hover:bg-destructive-100/20 border border-destructive-100/30 transition-all duration-200 group/delete"
+            title="Delete interview"
+          >
+            {isDeleting ? (
+              <svg
+                className="w-5 h-5 text-destructive-100 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            ) : (
+              <svg
+                className="w-5 h-5 text-destructive-100 group-hover/delete:scale-110 transition-transform"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            )}
+          </button>
+        )}
 
         {/* Type Badge */}
         <div className="absolute top-4 right-4 z-10">

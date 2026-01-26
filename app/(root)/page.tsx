@@ -19,12 +19,9 @@ const Homepage = async () => {
   }
 
   const [userInterviews, latestInterviews] = await Promise.all([
-    getInterviewByUserId(user.id), // Now guaranteed to exist
-    getLatestInterview({ userId: user.id }), // Now guaranteed to exist
+    getInterviewByUserId(user.id),
+    getLatestInterview({ userId: user.id }), // Will return max 6 random
   ]);
-
-  // const hasPastInterviews = userInterviews?.length > 0;
-  // const hasUpcomingInterviews = latestInterviews?.length > 0;
 
   const hasPastInterviews = (userInterviews?.length ?? 0) > 0;
   const hasUpcomingInterviews = (latestInterviews?.length ?? 0) > 0;
@@ -171,7 +168,12 @@ const Homepage = async () => {
         <div className="interviews-section">
           {hasPastInterviews ? (
             userInterviews?.map((interview) => (
-              <InterviewCard {...interview} key={interview.id} />
+              <InterviewCard
+                {...interview}
+                key={interview.id}
+                currentUserId={user.id}
+                isOwner={true}
+              />
             ))
           ) : (
             <div className="col-span-full flex flex-col items-center justify-center py-16 px-8 card-border">
@@ -219,7 +221,12 @@ const Homepage = async () => {
         <div className="interviews-section">
           {hasUpcomingInterviews ? (
             latestInterviews?.map((interview) => (
-              <InterviewCard {...interview} key={interview.id} />
+              <InterviewCard
+                {...interview}
+                key={interview.id}
+                currentUserId={user.id}
+                isOwner={false}
+              />
             ))
           ) : (
             <div className="col-span-full flex flex-col items-center justify-center py-16 px-8 card-border">
